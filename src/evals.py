@@ -6,25 +6,22 @@ from ragas.metrics import (
     context_precision,
     context_recall
 )
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain_ollama import ChatOllama, OllamaEmbeddings
 from src.config import settings
 
 def run_evaluation_suite(test_cases: list[dict]):
-    """
-    test_cases format:
-    [
-        {
-            "question": "What is the policy on parental leave?",
-            "contexts": ["..."],
-            "answer": "...",
-            "ground_truth": "..."
-        }
-    ]
-    """
     eval_dataset = Dataset.from_list(test_cases)
     
-    evaluator_llm = ChatOpenAI(model="gpt-4o", api_key=settings.openai_api_key)
-    evaluator_embeddings = OpenAIEmbeddings(model=settings.embedding_model, api_key=settings.openai_api_key)
+    # Configure Ragas to use local models for evaluation
+    evaluator_llm = ChatOllama(
+        model=settings.llm_model, 
+        base_url=settings.ollama_base_url,
+        temperature=0.0
+    )
+    evaluator_embeddings = OllamaEmbeddings(
+        model=settings.embedding_model, 
+        base_url=settings.ollama_base_url
+    )
 
     metrics = [
         faithfulness,

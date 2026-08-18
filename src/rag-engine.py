@@ -1,14 +1,14 @@
 from langchain_chroma import Chroma
-from langchain_openai import OpenAIEmbeddings, ChatOpenAI
+from langchain_ollama import OllamaEmbeddings, ChatOllama
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
 from src.config import settings
 
 def get_rag_chain():
-    embeddings = OpenAIEmbeddings(
+    embeddings = OllamaEmbeddings(
         model=settings.embedding_model,
-        api_key=settings.openai_api_key
+        base_url=settings.ollama_base_url
     )
     
     vectorstore = Chroma(
@@ -22,10 +22,11 @@ def get_rag_chain():
         search_kwargs={"k": 4}
     )
     
-    llm = ChatOpenAI(
+    # Fully local LLM via Ollama
+    llm = ChatOllama(
         model=settings.llm_model,
-        temperature=0.0,
-        api_key=settings.openai_api_key
+        base_url=settings.ollama_base_url,
+        temperature=0.0
     )
 
     system_prompt = (

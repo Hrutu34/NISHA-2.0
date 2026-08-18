@@ -1,12 +1,11 @@
 import os
 from langchain_community.document_loaders import DirectoryLoader, PyPDFLoader, TextLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_openai import OpenAIEmbeddings
+from langchain_ollama import OllamaEmbeddings
 from langchain_chroma import Chroma
 from src.config import settings
 
 def load_and_index_documents(data_dir: str = "./data"):
-    # Load markdown, text, and PDF documents
     loaders = [
         DirectoryLoader(data_dir, glob="**/*.md", loader_cls=TextLoader),
         DirectoryLoader(data_dir, glob="**/*.pdf", loader_cls=PyPDFLoader),
@@ -19,7 +18,6 @@ def load_and_index_documents(data_dir: str = "./data"):
     if not docs:
         raise ValueError(f"No documents found in directory: {data_dir}")
 
-    # Chunking strategy: 800 tokens with 150 token overlap for policy continuity
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=800,
         chunk_overlap=150,
@@ -27,9 +25,10 @@ def load_and_index_documents(data_dir: str = "./data"):
     )
     splits = text_splitter.split_documents(docs)
 
-    embeddings = OpenAIEmbeddings(
+    # Fully local embeddings via Ollama
+    embeddings = OllamaEmbeddings(
         model=settings.embedding_model,
-        api_key=settings.openai_api_key
+        base_url=settings.ollama_base_url
     )
     
     vectorstore = Chroma.from_documents(
@@ -43,4 +42,4 @@ def load_and_index_documents(data_dir: str = "./data"):
 
 if __name__ == "__main__":
     load_and_index_documents()
-    print("Ingestion complete. Vector store created.")
+    print("Ingestion complete. Local Vector store created.")
