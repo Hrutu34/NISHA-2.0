@@ -7,3 +7,4 @@ chromadb==0.4.24
 sentence-transformers>=3.0.0
 pypdf>=4.2.0
 torchvision>=0.18.0
+numpy<2.0.0
