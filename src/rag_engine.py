@@ -1,4 +1,5 @@
 import os
+import chromadb
 import streamlit as st
 from langchain_community.vectorstores import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -12,9 +13,10 @@ def get_embedding_function():
     # Runs locally on free CPU (no API key needed)
     return HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
+@st.cache_resource
 def get_rag_chain():
-    embeddings = get_embedding_function()
-    
+    chromadb.api.client.SharedSystemClient.clear_system_cache()
+    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
     vectorstore = Chroma(
         collection_name="company_policies",
         embedding_function=embeddings,
