@@ -2,7 +2,7 @@ import os
 from langchain_community.document_loaders import DirectoryLoader, PyPDFLoader, TextLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_chroma import Chroma
+from langchain_community.vectorstores import Chroma
 
 def load_and_index_documents(data_dir: str = "./data"):
     # Load markdown and PDF documents
