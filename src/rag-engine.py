@@ -1,38 +1,44 @@
+import os
+import streamlit as st
 from langchain_chroma import Chroma
-from langchain_ollama import OllamaEmbeddings, ChatOllama
+from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
-from src.config import settings
+
+@st.cache_resource
+def get_embedding_function():
+    # Runs locally on free CPU (no API key needed)
+    return HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
 def get_rag_chain():
-    embeddings = OllamaEmbeddings(
-        model=settings.embedding_model,
-        base_url=settings.ollama_base_url
-    )
+    embeddings = get_embedding_function()
     
     vectorstore = Chroma(
-        collection_name=settings.collection_name,
+        collection_name="company_policies",
         embedding_function=embeddings,
-        persist_directory=settings.chroma_persist_directory
+        persist_directory="./chroma_db"
     )
     
     retriever = vectorstore.as_retriever(
         search_type="similarity",
-        search_kwargs={"k": 4}
+        search_kwargs={"k": 3}
     )
     
-    # Fully local LLM via Ollama
-    llm = ChatOllama(
-        model=settings.llm_model,
-        base_url=settings.ollama_base_url,
+    # Retrieves free key from Streamlit Secrets or Environment
+    groq_api_key = os.environ.get("GROQ_API_KEY") or st.secrets.get("GROQ_API_KEY")
+    
+    llm = ChatGroq(
+        model_name="llama-3.1-8b-instant",
+        groq_api_key=groq_api_key,
         temperature=0.0
     )
 
     system_prompt = (
-        "You are NISHA, an intelligent internal assistant for company onboarding and policy guidance. "
-        "Use the retrieved company documentation below to provide direct, helpful, and empathetic answers. "
-        "If you do not know the answer or if the policy is not documented, clearly direct the user to HR.\n\n"
+        "You are NISHA, an intelligent company policy and onboarding assistant. "
+        "Use the policy context below to give accurate, empathetic, and clear guidance. "
+        "If the answer is not in the context, refer the employee to HR.\n\n"
         "Context:\n{context}"
     )
 
@@ -43,7 +49,7 @@ def get_rag_chain():
 
     def format_docs(docs):
         return "\n\n".join(
-            f"[Source: {doc.metadata.get('source', 'Policy Doc')}]\n{doc.page_content}" 
+            f"[{doc.metadata.get('source', 'Policy Doc')}]:\n{doc.page_content}"
             for doc in docs
         )
 
