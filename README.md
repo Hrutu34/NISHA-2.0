@@ -1,101 +1,213 @@
-# NISHA-2.0
+# NISHA 2.0: Newcomers' Integration, Support and Help Assistant
 
-Upload a set of documents/policies (PDFs, Markdowns, API specs) and ask natural-language questions about them from a new joiner`s perspective, as they have lesser knowledge about existing company policies. Answers are grounded in the actual content, with inline citations back to the exact source chunk — not a black box that might be making things up.
+[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
+[![Streamlit](https://img.shields.io/badge/Frontend-Streamlit-FF4B4B.svg)](https://streamlit.io/)
+[![LangChain](https://img.shields.io/badge/Orchestration-LangChain-green.svg)](https://www.langchain.com/)
+[![ChromaDB](https://img.shields.io/badge/VectorStore-ChromaDB-orange.svg)](https://www.trychroma.com/)
+[![Ragas](https://img.shields.io/badge/Evaluations-Ragas-purple.svg)](https://github.com/explodinggradients/ragas)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**🔗 Live demo:** `<Work in Progress>`
-**🔗 API docs:** `<Work in Progress>/docs` 
-
-> Note: the backend runs on Render's free tier and spins down after ~15 minutes of inactivity. The first request after idle time may take 30-50 seconds to wake up — please be patient on first load.
+> An intelligent, hallucination-resistant Retrieval-Augmented Generation (RAG) assistant designed to help new joiners navigate company policies, benefits, travel rules, and workplace guidelines with transparent, chunk-level citations.
 
 ---
 
-## Problem
+## Problem & Motivation
 
-Generic LLM chat answers questions from training data, which means it can't answer questions about custom policy documents, and it can't tell you where an answer came from. This project builds a retrieval-augmented pipeline that grounds every answer in retrieved source chunks, surfaces those sources transparently, and explicitly declines to answer when retrieval confidence is low — rather than confidently hallucinating.
+Navigating internal corporate documentation during onboarding is often overwhelming for new joiners. Generic LLMs cannot answer domain-specific internal policy queries reliably and are prone to hallucinations. 
 
-## Architecture
+**NISHA 2.0** solves this by:
+* Grounding responses in actual company policy documents (Leave, Travel, Health Insurance, WFH, IT Assets, etc.).
+* Providing verifiable inline source citations back to exact document chunks.
+* Running on a **100% free, zero-cost stack** (deployable on Streamlit Community Cloud or locally via Ollama).
+* Measuring retrieval quality and generation integrity through advanced evaluation metrics.
 
+---
+
+## System Architecture
+
+```text
+                               ┌─────────────────────────────┐
+                               │  data/sample_policies/*.md  │
+                               └──────────────┬──────────────┘
+                                              │ Ingestion & Chunking
+                                              ▼
+                               ┌─────────────────────────────┐
+                               │     HuggingFace / MiniLM    │
+                               │     (Local Embeddings)      │
+                               └──────────────┬──────────────┘
+                                              │ Indexing
+                                              ▼
+                               ┌─────────────────────────────┐
+                               │      ChromaDB (Vector)      │
+                               └──────────────┬──────────────┘
+                                              │
+┌─────────────────────────┐                   │ Similarity Retrieval (Top-K)
+│     Streamlit Web UI    │ ─── User Query ───┤
+│  (Chat & Citation View) │                   ▼
+│                         │ ◄─── Answer ───── ┌─────────────────────────────┐
+└─────────────────────────┘      + Sources    │    LLM Generation Engine    │
+                                              │  (Groq / LLaMA / Ollama)    │
+                                              └─────────────────────────────┘
 ```
-┌─────────────┐        ┌───────────────────────┐
-│   React     │  HTTP  │      FastAPI API       │
-│  Frontend   │◄──────►│  ───────────────────   │
-│  (Vercel)   │        │  Upload · Query · Eval │
-└─────────────┘        └──────────┬────────────┘
-                                   │
-                 ┌─────────────────┼─────────────────┐
-                 ▼                 ▼                 ▼
-        ┌────────────────┐ ┌──────────────┐  ┌──────────────┐
-        │  Chunking +    │ │   Pinecone    │  │   LLM API    │
-        │  Embedding     │ │ (vector store)│  │ (OpenAI/Groq)│
-        │  Pipeline      │ └──────────────┘  └──────────────┘
-        └────────────────┘
-```
 
-**Ingestion flow:** Document uploaded → text extracted → split into overlapping chunks (~500 tokens, 50-token overlap) → each chunk embedded → stored in Pinecone with metadata (source file, page number).
+### 1. Ingestion Pipeline
+* **Document Extraction:** Parses Markdown (`.md`) and PDF (`.pdf`) policy documents.
+* **Semantic Chunking:** Splits text into 800-character chunks with a 150-character overlap using hierarchical header boundaries (`##`, `###`).
+* **Vector Indexing:** Generates sentence embeddings via `all-MiniLM-L6-v2` / `nomic-embed-text` and persists to ChromaDB.
 
-**Query flow:** User question → embedded → top-k similar chunks retrieved from Pinecone → chunks + question assembled into a prompt → LLM generates an answer with citations → frontend renders the answer with expandable source references.
+### 2. Retrieval & Generation Engine
+* **Hybrid Context Matching:** Performs similarity search across policy embeddings to retrieve the top $K=3$ most relevant chunks.
+* **Context-Bound Prompting:** Injects retrieved chunks into a system prompt that explicitly instructs the model to refuse unsupported questions and refer employees to HR.
+* **Zero-Cost Inference:** Powered by Groq's high-speed free tier (`llama-3.1-8b-instant`) for cloud deployment, or local execution via Ollama (`llama3.2`).
+
+---
 
 ## Tech Stack
 
-| Layer | Technology | Why |
-|---|---|---|
-| Backend | Python, FastAPI | Fast to build, rich RAG/embedding ecosystem |
-| Document parsing | `unstructured` / `pypdf` | Extracts text from PDFs, Markdown, plain text |
-| Embeddings | OpenAI `text-embedding-3-small` (or `sentence-transformers` locally for zero-cost dev) | Cheap, solid quality for a portfolio-scale corpus |
-| Vector store | Pinecone (free tier) | Managed similarity search, no infra to run |
-| Generation | OpenAI / Groq | Composes grounded answers from retrieved chunks |
-| Frontend | React (Vite) | Upload UI + chat interface with citation badges |
-| Hosting | Render (backend), Vercel (frontend), Pinecone (vectors), Supabase Storage (optional file persistence) | Free tiers, GitHub auto-deploy |
-| CI | GitHub Actions | Runs `pytest` on every push |
-
-## Key Design Decisions
-
-- **Chunking strategy is deliberate, not default.** 500-token chunks with 50-token overlap were chosen to balance context completeness against retrieval precision — naive chunking (e.g., fixed character splits with no overlap) is the most common reason RAG systems retrieve incomplete or fragmented context.
-- **Citations are first-class, not an afterthought.** Every answer links back to the specific source file/chunk it drew from. This is what separates a usable internal tool from a demo — it lets a user actually verify the answer instead of trusting it blindly.
-- **Explicit "I don't know" behavior.** If retrieval similarity scores fall below a confidence threshold, the system tells the user it couldn't find a grounded answer instead of letting the LLM fill the gap with a plausible-sounding guess. This directly extends hallucination-mitigation work from an earlier LLM itinerary-planning project.
-- **(Optional, if implemented) Re-ranking.** A lightweight re-ranking pass over the top-k retrieved chunks before generation, to push the most relevant chunk to the top of context rather than relying on raw embedding similarity alone.
-
-## Evaluation
-
-A small hand-built eval set, run against my own uploaded test documents:
-
-| Question | Expected source | Retrieved correctly? | Answer quality (1-5) |
-|---|---|---|---|
-| "What authentication method does the API use?" | `api-spec.md`, section 3 | ✅ | 5 |
-| "What's the rate limit for the /users endpoint?" | `api-spec.md`, section 5 | ✅ | 4 |
-| "What's the pricing model?" (not in the docs) | — should decline | ✅ correctly declined | 5 |
-
-## Running Locally
-
-```bash
-# Backend
-cd backend
-python -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env   # add OpenAI key, Pinecone key/environment
-uvicorn main:app --reload
-
-# Frontend
-cd frontend
-npm install
-npm run dev
-```
-
-Requires: Python 3.11+, Node 18+, an OpenAI (or Groq) API key, a Pinecone account/index.
-
-## Known Limitations
-
-- Free-tier Pinecone index limits corpus size — fine for a portfolio demo, not for production document volumes.
-- Uploaded files are processed transiently by default (not persisted across sessions unless Supabase Storage is wired in).
-- Free-tier Render backend cold-starts after inactivity (~30-50s first request).
-- No automatic re-indexing if a source document is updated — currently requires re-upload.
-
-## Roadmap / What I'd Add Next
-
-- Re-ranking with a cross-encoder or Cohere's rerank endpoint for higher precision on ambiguous queries.
-- Support for incremental re-indexing when a document changes.
-- Multi-document comparison queries ("how does the auth flow differ between v1 and v2 of the API spec?").
+| Layer | Technology | Purpose / Advantage |
+| :--- | :--- | :--- |
+| **User Interface** | [Streamlit](https://streamlit.io/) | Lightweight, interactive chat interface with source citation accordion |
+| **Framework** | [LangChain](https://www.langchain.com/) | Modular orchestration of retrievers, document loaders, and chains |
+| **Vector Store** | [ChromaDB](https://www.trychroma.com/) | Persistent, lightweight, embedded vector database |
+| **Embeddings** | `sentence-transformers/all-MiniLM-L6-v2` | Open-source, CPU-friendly embeddings (runs at zero cost) |
+| **LLM Inference** | [Groq](https://groq.com/) / [Ollama](https://ollama.com/) | Ultra-fast free cloud inference or 100% private local execution |
+| **Evaluation** | [Ragas](https://github.com/explodinggradients/ragas) | Quantitative scoring of the RAG Triad (Faithfulness, Relevancy, Recall) |
 
 ---
 
-**Author:** Hrutu Surve 
+## Repository Structure
+
+```text
+nisha-2.0/
+├── data/
+│   └── sample_policies/                  # Sample markdown policy documents
+│       ├── asset_policy.md               # IT hardware & usage rules
+│       ├── health_insurance_policy.md    # Coverage & dependent guidelines
+│       ├── hybrid_and_wfh_policy.md      # Hybrid schedule & stipend
+│       ├── learning_and_development_policy.md # Certifications & budget
+│       ├── leave_policy.md               # Annual, sick, and parental leaves
+│       ├── probation_and_confirmation_policy.md # 90-day review roadmap
+│       ├── shift_allowance_policy.md     # Shift differential & on-call rates
+│       ├── transfer_policy.md            # Relocation assistance
+│       ├── travel_policy.md              # Per diem & booking rules
+│       └── workplace_conduct_policy.md   # Ethics, POSH, & grievance escalation
+├── src/
+│   ├── __init__.py
+│   ├── config.py                         # Environment settings & config
+│   ├── ingestion.py                      # Vector store indexing workflow
+│   ├── rag_engine.py                     # Retrieval chain & prompt formatting
+│   ├── evals.py                          # Automated Ragas evaluation suite
+│   └── api.py                            # Optional FastAPI endpoints
+├── app.py                                # Streamlit chat application
+├── requirements.txt                      # Project dependencies
+├── .env.example                          # Environment template
+└── README.md
+```
+
+---
+
+## Quickstart Guide
+
+### Option A: Local Run (Free via Groq API)
+
+1. **Clone the repository:**
+   ```bash
+   git clone [https://github.com/hrutu34/nisha-2.0.git](https://github.com/hrutu34/nisha-2.0.git)
+   cd nisha-2.0
+   ```
+
+2. **Create a virtual environment & install dependencies:**
+   ```bash
+   python -m venv venv
+   source venv/bin/activate
+   # On Windows: venv\Scripts\activate
+   pip install -r requirements.txt
+   ```
+
+3. **Configure environment variables:**
+   ```bash
+   cp .env.example .env
+   ```
+   Add your free Groq API key from [Groq Console](https://console.groq.com/):
+   ```env
+   GROQ_API_KEY=gsk_your_free_key_here
+   ```
+
+4. **Index policies & launch the app:**
+   ```bash
+   python -m src.ingestion
+   streamlit run app.py
+   ```
+
+---
+
+### Option B: 100% Local Run (No External APIs via Ollama)
+
+1. **Install and run Ollama:**
+   ```bash
+   ollama pull llama3.2
+   ollama pull nomic-embed-text
+   ```
+
+2. **Update your `.env`:**
+   ```env
+   OLLAMA_BASE_URL=http://localhost:11434
+   LLM_MODEL=llama3.2
+   EMBEDDING_MODEL=nomic-embed-text
+   ```
+
+3. **Run Streamlit:**
+   ```bash
+   streamlit run app.py
+   ```
+
+---
+
+## Evaluation & Quality Benchmarks
+
+NISHA 2.0 integrates automated testing using the **Ragas** framework to evaluate model hallucination and retrieval quality across 4 key dimensions:
+
+```text
+                  ┌──────────────────────┐
+                  │      RAG TRIAD       │
+                  └──────────┬───────────┘
+         ┌───────────────────┼───────────────────┐
+         ▼                   ▼                   ▼
+┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
+│  Faithfulness   │ │Answer Relevance │ │Context Precision│
+│ (No Hallucinate)│ │ (Direct Answer) │ │  (Signal/Noise) │
+└─────────────────┘ └─────────────────┘ └─────────────────┘
+```
+
+| Evaluation Metric | Target Score | Description |
+| :--- | :---: | :--- |
+| **Faithfulness** | $> 0.90$ | Measures if the response is strictly derived from retrieved text. |
+| **Answer Relevancy** | $> 0.85$ | Evaluates how directly the answer addresses the user's prompt. |
+| **Context Precision** | $> 0.85$ | Measures if the most relevant chunks are ranked at the top. |
+| **Context Recall** | $> 0.90$ | Measures whether all necessary facts from ground truth were retrieved. |
+
+To run the automated evaluation suite:
+```bash
+python -m src.evals
+```
+
+---
+
+## Free Cloud Deployment (Streamlit Community Cloud)
+
+1. Push your repository to GitHub.
+2. Visit [share.streamlit.io](https://share.streamlit.io/) and connect your repository (`hrutu34/nisha-2.0`).
+3. Set the main file path to `app.py`.
+4. Add your secrets under **App Settings > Secrets**:
+   ```toml
+   GROQ_API_KEY = "gsk_..."
+   ```
+5. Click **Deploy** for a zero-cost, always-on web demo.
+
+---
+
+## License
+
+Distributed under the MIT License. See `LICENSE` for more information.
+
+> Author : Hrutu Surve
