@@ -30,7 +30,7 @@ def get_rag_chain():
     groq_api_key = os.environ.get("GROQ_API_KEY") or st.secrets.get("GROQ_API_KEY")
     
     llm = ChatGroq(
-        model_name="llama-3.1-8b-instant",
+        model_name="llama3-8b-8192",  # Updated stable model ID
         groq_api_key=groq_api_key,
         temperature=0.0
     )
