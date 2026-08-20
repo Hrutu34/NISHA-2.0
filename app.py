@@ -12,52 +12,107 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom Styling
+# Modernized Dark / Ambient Glassmorphism Styling
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+    
     html, body, [class*="css"] {
-        font-family: 'Inter', sans-serif;
+        font-family: 'Plus Jakarta Sans', sans-serif;
     }
-    .main-header {
-        background: linear-gradient(90deg, #0F172A 0%, #1E3A8A 50%, #2563EB 100%);
-        padding: 24px 28px;
-        border-radius: 14px;
-        color: white;
-        margin-bottom: 20px;
+
+    /* Ambient Dark Backdrop */
+    .stApp {
+        background: radial-gradient(circle at 10% 20%, #0d1527 0%, #070a12 90%);
+        color: #f1f5f9;
     }
-    .main-header h1 {
-        color: white;
-        margin: 0;
+
+    /* Modern Glassmorphic Hero Banner */
+    .hero-banner {
+        background: linear-gradient(135deg, rgba(30, 58, 138, 0.4) 0%, rgba(15, 23, 42, 0.8) 100%);
+        border: 1px solid rgba(59, 130, 246, 0.3);
+        backdrop-filter: blur(16px);
+        padding: 24px 30px;
+        border-radius: 18px;
+        margin-bottom: 24px;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    }
+    .hero-title {
         font-size: 26px;
         font-weight: 700;
+        letter-spacing: -0.5px;
+        background: linear-gradient(90deg, #60A5FA 0%, #A78BFA 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin: 0;
     }
-    .main-header p {
-        color: #93C5FD;
-        margin: 6px 0 0 0;
+    .hero-subtitle {
+        color: #94A3B8;
         font-size: 14px;
+        margin-top: 6px;
     }
-    .policy-card {
-        background-color: #F8FAFC;
-        border: 1px solid #E2E8F0;
-        border-radius: 10px;
-        padding: 14px;
-        margin-bottom: 10px;
+
+    /* Glass Cards for Policies */
+    .glass-card {
+        background: rgba(15, 23, 42, 0.65);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 14px;
+        padding: 18px;
+        margin-bottom: 16px;
+        backdrop-filter: blur(10px);
+        transition: all 0.2s ease-in-out;
     }
-    .badge {
+    .glass-card:hover {
+        border-color: rgba(96, 165, 250, 0.4);
+        transform: translateY(-2px);
+    }
+
+    /* Custom Chat Bubbles */
+    .stChatMessage {
+        background-color: rgba(15, 23, 42, 0.7) !important;
+        border: 1px solid rgba(255, 255, 255, 0.07) !important;
+        border-radius: 16px !important;
+        backdrop-filter: blur(12px) !important;
+        margin-bottom: 14px !important;
+        padding: 16px !important;
+    }
+
+    /* Badge Pills */
+    .chip {
         display: inline-block;
-        padding: 3px 8px;
+        padding: 3px 10px;
         font-size: 11px;
         font-weight: 600;
-        border-radius: 12px;
-        background-color: #EFF6FF;
-        color: #1D4ED8;
-        border: 1px solid #BFDBFE;
+        border-radius: 20px;
+        background: rgba(59, 130, 246, 0.15);
+        color: #93C5FD;
+        border: 1px solid rgba(59, 130, 246, 0.3);
+        margin-right: 6px;
+    }
+
+    /* Force chat input grounding at bottom */
+    [data-testid="stChatInput"] {
+        position: fixed;
+        bottom: 24px;
+        left: auto;
+        right: auto;
+        z-index: 999;
+        max-width: 900px;
+        background: rgba(15, 23, 42, 0.95);
+        border: 1px solid rgba(59, 130, 246, 0.4);
+        border-radius: 16px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(20px);
+    }
+
+    /* Spacer for scrolling past sticky input */
+    .bottom-spacer {
+        height: 120px;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# Helper function to get list of indexed documents
+# Helper function to list indexed documents
 def get_available_policies(data_dir: str = "./data/sample_policies"):
     files = glob.glob(f"{data_dir}/*.md") + glob.glob(f"{data_dir}/*.pdf")
     policy_list = []
@@ -72,33 +127,25 @@ if not os.path.exists("./chroma_db"):
     with st.spinner("⚡ Initializing knowledge base and indexing policies..."):
         load_and_index_documents()
 
-# Header
-st.markdown("""
-<div class="main-header">
-    <h1>💼 NISHA 2.0</h1>
-    <p>Newcomers' Integration, Support, and Help Assistant — Instant, grounded answers to all company policies & benefits.</p>
-</div>
-""", unsafe_allow_html=True)
-
 policies = get_available_policies()
 
-# Sidebar: Controls & Active Policy Directory
+# Sidebar: Controls & Quick Prompts
 with st.sidebar:
-    st.header("📚 Knowledge Base")
-    st.caption(f"Currently indexed: **{len(policies)} active policy documents**")
+    st.markdown("### 📚 Knowledge Base")
+    st.caption(f"Currently indexed: **{len(policies)} verified policies**")
     
     with st.expander("📄 View Available Policies", expanded=False):
         for p in policies:
             st.markdown(f"• **{p['name']}**  \n`{p['filename']}`")
     
     st.divider()
-    st.subheader("💡 Suggested Prompts")
+    st.markdown("### 💡 Quick Queries")
     sample_queries = [
         "What are the eligibility criteria for an internal transfer?",
-        "How many days of sick leave can I take without a doctor's certificate?",
+        "How many days of sick leave can I take without a medical certificate?",
         "What is the WFH ergonomics allowance amount?",
         "What are the night shift allowance and on-call rates?",
-        "How do I add my parents to my group health insurance?"
+        "How do I add my parents to my health insurance?"
     ]
     
     for query in sample_queries:
@@ -110,21 +157,34 @@ with st.sidebar:
         st.session_state.messages = []
         st.rerun()
 
-# Layout: Main Chat vs Knowledge Base Overview Tabs
+# Hero Header Banner
+st.markdown("""
+<div class="hero-banner">
+    <div class="hero-title">💼 NISHA 2.0</div>
+    <div class="hero-subtitle">Newcomers' Integration, Support, and Help Assistant — Instant, grounded guidance with inline citations.</div>
+    <div style="margin-top: 12px;">
+        <span class="chip">RAG Verified</span>
+        <span class="chip">OpenAi GPT-OSS 20b</span>
+        <span class="chip">Zero-Cost Stack</span>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+# Layout Tabs
 tab_chat, tab_docs = st.tabs(["💬 Assistant Chat", "📑 Active Policy Documents"])
 
-# TAB 1: Chatbot Interface
+# TAB 1: Chat Interface
 with tab_chat:
     if "messages" not in st.session_state:
         st.session_state.messages = [
             {
                 "role": "assistant",
-                "content": "👋 Hi there! I'm **NISHA**, your company policy companion. Ask me any question about leave rules, travel allowances, health insurance, hybrid work guidelines, or equipment policies.",
+                "content": "👋 Hi there! I'm **NISHA**, your company policy companion. Ask me any question about leave allocations, travel per diems, medical coverage, hybrid work rules, or IT hardware allowances.",
                 "sources": []
             }
         ]
 
-    # Render Conversation History
+    # Render Conversation
     for msg in st.session_state.messages:
         with st.chat_message(msg["role"], avatar="🧑‍💼" if msg["role"] == "user" else "🤖"):
             st.markdown(msg["content"])
@@ -134,23 +194,50 @@ with tab_chat:
                         st.markdown(f"**Document:** `{s['source']}`")
                         st.caption(s["snippet"])
 
-    # Handle Input
-    prompt = st.chat_input("Ask a question about any company policy...")
+# TAB 2: Knowledge Base Inspector
+with tab_docs:
+    st.subheader("📑 Indexed Corporate Policies")
+    st.caption("All responses are strictly derived from the official markdown policy files below:")
+    
+    col1, col2 = st.columns(2)
+    for idx, p in enumerate(policies):
+        target_col = col1 if idx % 2 == 0 else col2
+        with target_col:
+            st.markdown(f"""
+            <div class="glass-card">
+                <h4 style="margin: 0 0 4px 0; color: #60A5FA;">📄 {p['name']}</h4>
+                <div style="color: #94A3B8; font-size: 12px; margin-bottom: 10px;">File: <code>{p['filename']}</code></div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            if os.path.exists(p["path"]):
+                try:
+                    with open(p["path"], "r", encoding="utf-8") as f:
+                        preview = f.read()[:300].strip() + "..."
+                        st.markdown(f"```markdown\n{preview}\n```")
+                except Exception:
+                    st.caption("Preview unavailable.")
+            st.write("")
 
-    if "preset_prompt" in st.session_state and st.session_state.preset_prompt:
-        prompt = st.session_state.preset_prompt
-        st.session_state.preset_prompt = None
+# Chat Input placed at Root Level (Strictly grounded at the bottom of the screen)
+prompt = st.chat_input("Ask a question about any company policy...")
 
-    if prompt:
-        # Display user message
-        st.session_state.messages.append({"role": "user", "content": prompt, "sources": []})
+if "preset_prompt" in st.session_state and st.session_state.preset_prompt:
+    prompt = st.session_state.preset_prompt
+    st.session_state.preset_prompt = None
+
+if prompt:
+    # Add user message
+    st.session_state.messages.append({"role": "user", "content": prompt, "sources": []})
+    
+    with tab_chat:
         with st.chat_message("user", avatar="🧑‍💼"):
             st.markdown(prompt)
 
         try:
             rag_chain, retriever = get_rag_chain()
             
-            # Fetch source documents
+            # Retrieve source chunks
             source_docs = retriever.invoke(prompt)
             formatted_sources = [
                 {
@@ -161,16 +248,14 @@ with tab_chat:
             ]
 
             with st.chat_message("assistant", avatar="🤖"):
-                # Stream response chunk by chunk
                 def response_generator():
                     for chunk in rag_chain.stream(prompt):
                         cleaned = clean_chunk(chunk)
-                        time.sleep(0.015)  # Smooth, readable typing cadence
+                        time.sleep(0.012)
                         yield cleaned
 
                 response_text = st.write_stream(response_generator)
                 
-                # Render source citations
                 if formatted_sources:
                     with st.expander("📌 Source Document Citations", expanded=False):
                         for s in formatted_sources:
@@ -187,27 +272,5 @@ with tab_chat:
         except Exception as e:
             st.error(f"Error querying NISHA engine: {e}")
 
-# TAB 2: Knowledge Base Inspector
-with tab_docs:
-    st.subheader("📑 Indexed Corporate Policies")
-    st.info("NISHA answers all employee queries based exclusively on the policy documents below:")
-    
-    col1, col2 = st.columns(2)
-    for idx, p in enumerate(policies):
-        target_col = col1 if idx % 2 == 0 else col2
-        with target_col:
-            with st.container():
-                st.markdown(f"#### 📄 {p['name']}")
-                st.caption(f"Filename: `{p['filename']}`")
-                
-                # Show policy snippet
-                if os.path.exists(p["path"]):
-                    try:
-                        with open(p["path"], "r", encoding="utf-8") as f:
-                            content = f.read()
-                            # Show first 300 characters as preview
-                            preview = content[:300].strip() + "..."
-                            st.markdown(f"```text\n{preview}\n```")
-                    except Exception:
-                        st.caption("Document preview unavailable.")
-                st.divider()
+# Spacer so chat bubbles don't get covered by fixed input
+st.markdown('<div class="bottom-spacer"></div>', unsafe_allow_html=True)
