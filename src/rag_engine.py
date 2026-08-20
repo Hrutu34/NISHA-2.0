@@ -9,12 +9,12 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
 
-def clean_markdown_output(text: str) -> str:
-    # Convert <br> or <br/> tags to simple line breaks
+def clean_chunk(text: str) -> str:
+    # Remove HTML break tags
     text = re.sub(r'<br\s*/?>', '\n', text, flags=re.IGNORECASE)
-    # Fix broken currency math triggers
+    # Fix math trigger escaping
     text = text.replace('\\$', '$')
-    return text.strip()
+    return text
 
 @st.cache_resource
 def get_embedding_function():
@@ -38,21 +38,22 @@ def get_rag_chain():
     
     groq_api_key = os.environ.get("GROQ_API_KEY") or st.secrets.get("GROQ_API_KEY")
     
+    # Enable streaming on ChatGroq
     llm = ChatGroq(
         model_name="openai/gpt-oss-20b",  # Updated active model ID
         groq_api_key=groq_api_key,
-        temperature=0.0
+        temperature=0.0,
+        streaming=True
     )
 
     system_prompt = (
-        "You are NISHA, an intelligent and empathetic internal HR and policy assistant for company employees and new joiners.\n"
-        "Your task is to provide structured, accurate, and easily readable answers strictly grounded in the context provided below.\n\n"
-        "### FORMATTING RULES:\n"
-        "1. DO NOT use raw HTML tags like `<br>`, `<p>`, or `<span>`. Use standard Markdown bullet points and line breaks instead.\n"
-        "2. When mentioning currency amounts (e.g., $3,000), write them clearly without LaTeX math formulas.\n"
-        "3. When answering, structure your response with clear subheadings, bullet points, and an optional 'Next Steps' or 'Important Notes' section.\n"
-        "4. Always mention the exact policy name and section number at the end of the explanation under a '📌 Citations' section.\n"
-        "5. If the provided context does not contain enough information to answer definitively, clearly state what is missing and direct the employee to contact HR at `hr-helpdesk@company.com`.\n\n"
+        "You are NISHA, an internal HR and onboarding assistant for company employees.\n"
+        "Provide direct, structured, and accurate guidance based strictly on the context below.\n\n"
+        "### RULES:\n"
+        "1. DO NOT use raw HTML tags (e.g., `<br>`, `<p>`). Use standard Markdown line breaks and bullet points.\n"
+        "2. Do not enclose currency in LaTeX symbols ($3,000 should be plain text).\n"
+        "3. Include structured headings, bullet points, and clearly state policy names and sections.\n"
+        "4. If the context does not contain sufficient details to answer, state what is missing and direct the employee to HR at `hr-helpdesk@company.com`.\n\n"
         "Context:\n{context}"
     )
 
@@ -63,7 +64,7 @@ def get_rag_chain():
 
     def format_docs(docs):
         return "\n\n".join(
-            f"[Source Document: {doc.metadata.get('source', 'Company Policy')}]\n{doc.page_content}" 
+            f"[Source: {os.path.basename(doc.metadata.get('source', 'Policy Doc'))}]\n{doc.page_content}"
             for doc in docs
         )
 
@@ -72,7 +73,6 @@ def get_rag_chain():
         | prompt
         | llm
         | StrOutputParser()
-        | clean_markdown_output
     )
 
     return rag_chain, retriever
