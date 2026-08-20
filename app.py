@@ -57,12 +57,24 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Helper function to embed PDFs directly in Streamlit
-def display_pdf(file_path):
+def display_pdf(file_path, filename):
     try:
         with open(file_path, "rb") as f:
-            base64_pdf = base64.b64encode(f.read()).decode('utf-8')
-        # Embed the PDF in an iframe
-        pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="600" type="application/pdf" style="border: 1px solid #ccc; border-radius: 8px;"></iframe>'
+            pdf_bytes = f.read()
+            base64_pdf = base64.b64encode(pdf_bytes).decode('utf-8')
+        
+        # Foolproof Fallback: Add a native download button
+        st.download_button(
+            label="📥 Download Policy Document",
+            data=pdf_bytes,
+            file_name=filename,
+            mime="application/pdf"
+        )
+        
+        st.write("") # Small spacer
+        
+        # Switch from <iframe> to <embed> to bypass Edge/Chrome security blocks
+        pdf_display = f'<embed src="data:application/pdf;base64,{base64_pdf}" width="100%" height="650" type="application/pdf">'
         st.markdown(pdf_display, unsafe_allow_html=True)
     except Exception as e:
         st.error(f"Could not load PDF: {e}")
@@ -157,7 +169,8 @@ with tab_docs:
     for p in policies:
         with st.expander(f"📄 {p['name']} ({p['filename']})"):
             if p["path"].endswith(".pdf"):
-                display_pdf(p["path"])
+                # Pass the filename so the download button knows what to name the file!
+                display_pdf(p["path"], p["filename"])
             elif p["path"].endswith(".md"):
                 with open(p["path"], "r", encoding="utf-8") as f:
                     st.markdown(f.read())
