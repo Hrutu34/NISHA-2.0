@@ -8,3 +8,4 @@ sentence-transformers>=3.0.0
 pypdf>=4.2.0
 torchvision>=0.18.0
 numpy<2.0.0
+streamlit-pdf-viewer>=0.0.16

@@ -1,8 +1,8 @@
 import os
 import time
 import glob
-import base64
 import streamlit as st
+from streamlit_pdf_viewer import pdf_viewer
 from src.rag_engine import get_rag_chain, clean_chunk
 from src.ingestion import load_and_index_documents
 
@@ -13,7 +13,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Clean, Surgical CSS 
+# Surgically scoped CSS
 st.markdown("""
 <style>
     /* Modern Hero Banner */
@@ -55,29 +55,6 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
-
-# Helper function to embed PDFs directly in Streamlit
-def display_pdf(file_path, filename):
-    try:
-        with open(file_path, "rb") as f:
-            pdf_bytes = f.read()
-            base64_pdf = base64.b64encode(pdf_bytes).decode('utf-8')
-        
-        # Foolproof Fallback: Add a native download button
-        st.download_button(
-            label="📥 Download Policy Document",
-            data=pdf_bytes,
-            file_name=filename,
-            mime="application/pdf"
-        )
-        
-        st.write("") # Small spacer
-        
-        # Switch from <iframe> to <embed> to bypass Edge/Chrome security blocks
-        pdf_display = f'<embed src="data:application/pdf;base64,{base64_pdf}" width="100%" height="650" type="application/pdf">'
-        st.markdown(pdf_display, unsafe_allow_html=True)
-    except Exception as e:
-        st.error(f"Could not load PDF: {e}")
 
 # Helper function to list indexed documents (Supports both PDF and MD)
 def get_available_policies(data_dir: str = "./data/sample_policies"):
@@ -169,8 +146,23 @@ with tab_docs:
     for p in policies:
         with st.expander(f"📄 {p['name']} ({p['filename']})"):
             if p["path"].endswith(".pdf"):
-                # Pass the filename so the download button knows what to name the file!
-                display_pdf(p["path"], p["filename"])
+                # Open the file once to serve both the download button and the viewer
+                with open(p["path"], "rb") as f:
+                    pdf_bytes = f.read()
+                
+                # Keep the Download Button
+                st.download_button(
+                    label="📥 Download Policy Document",
+                    data=pdf_bytes,
+                    file_name=p["filename"],
+                    mime="application/pdf"
+                )
+                
+                st.write("") # Spacer
+                
+                # Render the PDF safely using PDF.js via the new library
+                pdf_viewer(pdf_bytes, width=800)
+                
             elif p["path"].endswith(".md"):
                 with open(p["path"], "r", encoding="utf-8") as f:
                     st.markdown(f.read())
