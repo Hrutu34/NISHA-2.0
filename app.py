@@ -12,36 +12,31 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Modernized Dark / Ambient Glassmorphism Styling
+# Clean, Surgical CSS (No destructive global overrides)
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
     
-    /* Global Font */
-    html, body, [class*="css"] {
+    /* Apply custom font without breaking Streamlit's layout */
+    html, body, [class*="st-"] {
         font-family: 'Plus Jakarta Sans', sans-serif !important;
     }
 
-    /* Seamless Dark Background for Main App and Sidebar */
-    .stApp {
-        background-color: #0B1121;
+    /* Style the Sidebar Buttons properly so text is always visible */
+    div.stButton > button {
+        background-color: #1E293B !important; 
+        color: #F8FAFC !important;
+        border: 1px solid #334155 !important;
+        border-radius: 8px !important;
+        padding: 10px 14px !important;
+        white-space: normal !important; /* Allows long text to wrap nicely */
+        height: auto !important;
+        transition: all 0.2s ease-in-out;
     }
-    [data-testid="stSidebar"] {
+    div.stButton > button:hover {
+        border-color: #3B82F6 !important;
+        color: #60A5FA !important;
         background-color: #0F172A !important;
-        border-right: 1px solid #1E293B;
-    }
-    [data-testid="stHeader"] {
-        background-color: transparent !important;
-    }
-
-    /* Force text colors to match dark theme globally */
-    .stApp p, .stApp span, .stApp div, .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp li {
-        color: #F8FAFC;
-    }
-    
-    /* Subtle text for captions */
-    .stApp small, .stApp .st-emotion-cache-1wivap2 {
-        color: #94A3B8 !important;
     }
 
     /* Modern Hero Banner */
@@ -63,7 +58,7 @@ st.markdown("""
         margin: 0;
     }
     .hero-subtitle {
-        color: #CBD5E1 !important;
+        color: #CBD5E1;
         font-size: 15px;
         margin-top: 8px;
     }
@@ -71,7 +66,7 @@ st.markdown("""
     /* Glass Cards for Policy Viewer */
     .glass-card {
         background: rgba(30, 41, 59, 0.5);
-        border: 1px solid rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
         border-radius: 12px;
         padding: 16px;
         margin-bottom: 16px;
@@ -82,14 +77,6 @@ st.markdown("""
         background: rgba(30, 41, 59, 0.8);
     }
 
-    /* Beautiful Chat Bubbles */
-    .stChatMessage {
-        background-color: rgba(30, 41, 59, 0.6) !important;
-        border: 1px solid rgba(255, 255, 255, 0.05) !important;
-        border-radius: 12px !important;
-        padding: 16px !important;
-    }
-
     /* Badge Pills */
     .chip {
         display: inline-block;
@@ -98,15 +85,9 @@ st.markdown("""
         font-weight: 600;
         border-radius: 20px;
         background: rgba(59, 130, 246, 0.1);
-        color: #93C5FD !important;
+        color: #93C5FD;
         border: 1px solid rgba(59, 130, 246, 0.3);
         margin-right: 8px;
-    }
-    
-    /* Ensure Streamlit's native bottom chat input blends cleanly */
-    [data-testid="stChatInput"] {
-        background-color: #0F172A !important;
-        border-color: #334155 !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -214,12 +195,12 @@ with tab_docs:
                 try:
                     with open(p["path"], "r", encoding="utf-8") as f:
                         preview = f.read()[:250].strip() + "..."
-                        st.markdown(f"```markdown\n{preview}\n```")
+                        st.markdown(f"```text\n{preview}\n```")
                 except Exception:
                     st.caption("Preview unavailable.")
             st.write("")
 
-# Chat Input placed at Root Level (Streamlit naturally perfectly anchors this to the bottom)
+# Chat Input placed at Root Level
 prompt = st.chat_input("Ask a question about any company policy...")
 
 if "preset_prompt" in st.session_state and st.session_state.preset_prompt:
