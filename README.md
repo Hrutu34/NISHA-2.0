@@ -1,13 +1,24 @@
 # NISHA 2.0: Newcomers' Integration, Support and Help Assistant
 
-[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
-[![Streamlit](https://img.shields.io/badge/Frontend-Streamlit-FF4B4B.svg)](https://streamlit.io/)
-[![LangChain](https://img.shields.io/badge/Orchestration-LangChain-green.svg)](https://www.langchain.com/)
-[![ChromaDB](https://img.shields.io/badge/VectorStore-ChromaDB-orange.svg)](https://www.trychroma.com/)
-[![Ragas](https://img.shields.io/badge/Evaluations-Ragas-purple.svg)](https://github.com/explodinggradients/ragas)
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://nisha-2.streamlit.app/)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![LangChain](https://img.shields.io/badge/orchestration-LangChain-green.svg)](https://python.langchain.com/)
+[![Groq GPT-OSS-20B](https://img.shields.io/badge/LLM-GPT--OSS--20B%20(Groq)-orange.svg)](https://groq.com/)
+[![ChromaDB](https://img.shields.io/badge/Vector%20Store-ChromaDB-purple.svg)](https://www.trychroma.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 > An intelligent, hallucination-resistant Retrieval-Augmented Generation (RAG) assistant designed to help new joiners navigate company policies, benefits, travel rules, and workplace guidelines with transparent, chunk-level citations.
+
+---
+
+## ✨ Key Features
+
+- **⚡ Real-Time Response Streaming:** Responses stream smoothly character-by-character using `st.write_stream` for an interactive, natural conversational feel.
+- **📄 Native In-App PDF Document Viewer:** Employees can read original, official corporate PDF policy documents directly in the browser with instant download support.
+- **📌 Transparent Source Citations:** Every answer cites the exact policy document and excerpt retrieved from the knowledge base, eliminating hallucinations.
+- **🏢 Enterprise Knowledge Base:** Grounded in 10 comprehensive, interconnected corporate policies spanning HR, legal, travel, compensation, IT security, and executive governance.
+- **🚀 Zero-Cost Production Stack:** Optimized for cost efficiency using HuggingFace embeddings (`all-MiniLM-L6-v2`), local Chroma vector storage, and Groq's high-speed inference engine running OpenAI's open-weight **GPT-OSS 20B** model.
+- **🌐 Dual Interface:** Interactive Streamlit UI for employees and a standalone FastAPI backend (`src/api.py`) for enterprise portal integration.
 
 ---
 
@@ -18,7 +29,7 @@ Navigating internal corporate documentation during onboarding is often overwhelm
 **NISHA 2.0** solves this by:
 * Grounding responses in actual company policy documents (Leave, Travel, Health Insurance, WFH, IT Assets, etc.).
 * Providing verifiable inline source citations back to exact document chunks.
-* Running on a **100% free, zero-cost stack** (deployable on Streamlit Community Cloud or locally via Ollama).
+* Running on a **100% free, zero-cost stack** (deployable on Streamlit Community Cloud and uses Groq API).
 * Measuring retrieval quality and generation integrity through advanced evaluation metrics.
 
 ---
@@ -27,7 +38,7 @@ Navigating internal corporate documentation during onboarding is often overwhelm
 
 ```text
                                ┌─────────────────────────────┐
-                               │  data/sample_policies/*.md  │
+                               │  data/sample_policies/*.pdf │
                                └──────────────┬──────────────┘
                                               │ Ingestion & Chunking
                                               ▼
@@ -51,14 +62,45 @@ Navigating internal corporate documentation during onboarding is often overwhelm
 ```
 
 ### 1. Ingestion Pipeline
-* **Document Extraction:** Parses Markdown (`.md`) and PDF (`.pdf`) policy documents.
+* **Document Extraction:** Parses PDF (`.pdf`) policy documents.
 * **Semantic Chunking:** Splits text into 800-character chunks with a 150-character overlap using hierarchical header boundaries (`##`, `###`).
 * **Vector Indexing:** Generates sentence embeddings via `all-MiniLM-L6-v2` / `nomic-embed-text` and persists to ChromaDB.
 
 ### 2. Retrieval & Generation Engine
 * **Hybrid Context Matching:** Performs similarity search across policy embeddings to retrieve the top $K=3$ most relevant chunks.
 * **Context-Bound Prompting:** Injects retrieved chunks into a system prompt that explicitly instructs the model to refuse unsupported questions and refer employees to HR.
-* **Zero-Cost Inference:** Powered by Groq's high-speed free tier (`llama-3.1-8b-instant`) for cloud deployment, or local execution via Ollama (`llama3.2`).
+* **Zero-Cost Inference:** Powered by Groq's high-speed free tier (`gpt-oss-20b`) for cloud deployment.
+
+---
+##Project Structure
+
+```
+nisha-2.0/
+├── data/
+│   └── sample_policies/        # Multi-page corporate policy PDF documents
+│       ├── global_travel_and_expense_policy_v4.pdf
+│       ├── health_insurance_and_wellness_policy_v6.pdf
+│       ├── hierarchy_and_leadership_directory.pdf
+│       ├── hybrid_and_wfh_policy_v4.pdf
+│       ├── it_asset_management_policy_v3.pdf
+│       ├── learning_and_development_policy_v2.pdf
+│       ├── leave_and_attendance_policy_v5.pdf
+│       ├── probation_and_confirmation_policy_v5.pdf
+│       ├── shift_allowance_policy_v3.pdf
+│       ├── transfer_and_relocation_policy_v4.pdf
+│       └── workplace_conduct_and_posh_policy_v4.pdf
+├── src/
+│   ├── __init__.py
+│   ├── api.py                  # FastAPI REST API endpoints
+│   ├── config.py               # Centralized path and model configurations
+│   ├── evals.py                # Ragas & evaluation benchmarking suite
+│   ├── ingestion.py            # PDF document loading, chunking, and ChromaDB vector indexing
+│   └── rag_engine.py           # LangChain Groq streaming chain & retriever setup
+├── app.py                      # Main Streamlit web application with PDF viewer
+├── requirements.txt            # Python dependencies
+├── LICENSE
+└── README.md
+```
 
 ---
 
@@ -70,39 +112,8 @@ Navigating internal corporate documentation during onboarding is often overwhelm
 | **Framework** | [LangChain](https://www.langchain.com/) | Modular orchestration of retrievers, document loaders, and chains |
 | **Vector Store** | [ChromaDB](https://www.trychroma.com/) | Persistent, lightweight, embedded vector database |
 | **Embeddings** | `sentence-transformers/all-MiniLM-L6-v2` | Open-source, CPU-friendly embeddings (runs at zero cost) |
-| **LLM Inference** | [Groq](https://groq.com/) / [Ollama](https://ollama.com/) | Ultra-fast free cloud inference or 100% private local execution |
+| **LLM Inference** | [Groq](https://groq.com/)| Ultra-fast free cloud inference |
 | **Evaluation** | [Ragas](https://github.com/explodinggradients/ragas) | Quantitative scoring of the RAG Triad (Faithfulness, Relevancy, Recall) |
-
----
-
-## Repository Structure
-
-```text
-nisha-2.0/
-├── data/
-│   └── sample_policies/                  # Sample markdown policy documents
-│       ├── asset_policy.md               # IT hardware & usage rules
-│       ├── health_insurance_policy.md    # Coverage & dependent guidelines
-│       ├── hybrid_and_wfh_policy.md      # Hybrid schedule & stipend
-│       ├── learning_and_development_policy.md # Certifications & budget
-│       ├── leave_policy.md               # Annual, sick, and parental leaves
-│       ├── probation_and_confirmation_policy.md # 90-day review roadmap
-│       ├── shift_allowance_policy.md     # Shift differential & on-call rates
-│       ├── transfer_policy.md            # Relocation assistance
-│       ├── travel_policy.md              # Per diem & booking rules
-│       └── workplace_conduct_policy.md   # Ethics, POSH, & grievance escalation
-├── src/
-│   ├── __init__.py
-│   ├── config.py                         # Environment settings & config
-│   ├── ingestion.py                      # Vector store indexing workflow
-│   ├── rag_engine.py                     # Retrieval chain & prompt formatting
-│   ├── evals.py                          # Automated Ragas evaluation suite
-│   └── api.py                            # Optional FastAPI endpoints
-├── app.py                                # Streamlit chat application
-├── requirements.txt                      # Project dependencies
-├── .env.example                          # Environment template
-└── README.md
-```
 
 ---
 
@@ -124,43 +135,22 @@ nisha-2.0/
    pip install -r requirements.txt
    ```
 
-3. **Configure environment variables:**
+3. Install Dependencies
    ```bash
-   cp .env.example .env
-   ```
-   Add your free Groq API key from [Groq Console](https://console.groq.com/):
-   ```env
-   GROQ_API_KEY=gsk_your_free_key_here
-   ```
-
-4. **Index policies & launch the app:**
+   pip install -r requirements.txt
+   
+4. Configure Environment Variables
+   Create a .env file in the root directory (or configure secrets in Streamlit Cloud):
    ```bash
-   python -m src.ingestion
-   streamlit run app.py
+   Ini, TOML
+   GROQ_API_KEY=your_groq_api_key_here
    ```
-
----
-
-### Option B: 100% Local Run (No External APIs via Ollama)
-
-1. **Install and run Ollama:**
-   ```bash
-   ollama pull llama3.2
-   ollama pull nomic-embed-text
-   ```
-
-2. **Update your `.env`:**
-   ```env
-   OLLAMA_BASE_URL=http://localhost:11434
-   LLM_MODEL=llama3.2
-   EMBEDDING_MODEL=nomic-embed-text
-   ```
-
-3. **Run Streamlit:**
+   
+5. Launch the Application
    ```bash
    streamlit run app.py
    ```
-
+   
 ---
 
 ## Evaluation & Quality Benchmarks
