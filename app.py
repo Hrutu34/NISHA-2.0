@@ -15,30 +15,46 @@ st.set_page_config(
 # Modernized Dark / Ambient Glassmorphism Styling
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
     
+    /* Global Font */
     html, body, [class*="css"] {
-        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-family: 'Plus Jakarta Sans', sans-serif !important;
     }
 
-    /* Ambient Dark Backdrop */
+    /* Seamless Dark Background for Main App and Sidebar */
     .stApp {
-        background: radial-gradient(circle at 10% 20%, #0d1527 0%, #070a12 90%);
-        color: #f1f5f9;
+        background-color: #0B1121;
+    }
+    [data-testid="stSidebar"] {
+        background-color: #0F172A !important;
+        border-right: 1px solid #1E293B;
+    }
+    [data-testid="stHeader"] {
+        background-color: transparent !important;
     }
 
-    /* Modern Glassmorphic Hero Banner */
+    /* Force text colors to match dark theme globally */
+    .stApp p, .stApp span, .stApp div, .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp li {
+        color: #F8FAFC;
+    }
+    
+    /* Subtle text for captions */
+    .stApp small, .stApp .st-emotion-cache-1wivap2 {
+        color: #94A3B8 !important;
+    }
+
+    /* Modern Hero Banner */
     .hero-banner {
-        background: linear-gradient(135deg, rgba(30, 58, 138, 0.4) 0%, rgba(15, 23, 42, 0.8) 100%);
-        border: 1px solid rgba(59, 130, 246, 0.3);
-        backdrop-filter: blur(16px);
-        padding: 24px 30px;
-        border-radius: 18px;
+        background: linear-gradient(135deg, rgba(30, 58, 138, 0.5) 0%, rgba(15, 23, 42, 0.9) 100%);
+        border: 1px solid rgba(59, 130, 246, 0.2);
+        padding: 28px 32px;
+        border-radius: 16px;
         margin-bottom: 24px;
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        box-shadow: 0 4px 24px -4px rgba(0, 0, 0, 0.4);
     }
     .hero-title {
-        font-size: 26px;
+        font-size: 28px;
         font-weight: 700;
         letter-spacing: -0.5px;
         background: linear-gradient(90deg, #60A5FA 0%, #A78BFA 100%);
@@ -47,67 +63,50 @@ st.markdown("""
         margin: 0;
     }
     .hero-subtitle {
-        color: #94A3B8;
-        font-size: 14px;
-        margin-top: 6px;
+        color: #CBD5E1 !important;
+        font-size: 15px;
+        margin-top: 8px;
     }
 
-    /* Glass Cards for Policies */
+    /* Glass Cards for Policy Viewer */
     .glass-card {
-        background: rgba(15, 23, 42, 0.65);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 14px;
-        padding: 18px;
+        background: rgba(30, 41, 59, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 12px;
+        padding: 16px;
         margin-bottom: 16px;
-        backdrop-filter: blur(10px);
         transition: all 0.2s ease-in-out;
     }
     .glass-card:hover {
-        border-color: rgba(96, 165, 250, 0.4);
-        transform: translateY(-2px);
+        border-color: rgba(96, 165, 250, 0.5);
+        background: rgba(30, 41, 59, 0.8);
     }
 
-    /* Custom Chat Bubbles */
+    /* Beautiful Chat Bubbles */
     .stChatMessage {
-        background-color: rgba(15, 23, 42, 0.7) !important;
-        border: 1px solid rgba(255, 255, 255, 0.07) !important;
-        border-radius: 16px !important;
-        backdrop-filter: blur(12px) !important;
-        margin-bottom: 14px !important;
+        background-color: rgba(30, 41, 59, 0.6) !important;
+        border: 1px solid rgba(255, 255, 255, 0.05) !important;
+        border-radius: 12px !important;
         padding: 16px !important;
     }
 
     /* Badge Pills */
     .chip {
         display: inline-block;
-        padding: 3px 10px;
+        padding: 4px 12px;
         font-size: 11px;
         font-weight: 600;
         border-radius: 20px;
-        background: rgba(59, 130, 246, 0.15);
-        color: #93C5FD;
+        background: rgba(59, 130, 246, 0.1);
+        color: #93C5FD !important;
         border: 1px solid rgba(59, 130, 246, 0.3);
-        margin-right: 6px;
+        margin-right: 8px;
     }
-
-    /* Force chat input grounding at bottom */
+    
+    /* Ensure Streamlit's native bottom chat input blends cleanly */
     [data-testid="stChatInput"] {
-        position: fixed;
-        bottom: 24px;
-        left: auto;
-        right: auto;
-        z-index: 999;
-        max-width: 900px;
-        background: rgba(15, 23, 42, 0.95);
-        border: 1px solid rgba(59, 130, 246, 0.4);
-        border-radius: 16px;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
-        backdrop-filter: blur(20px);
-    }
-
-    /* Spacer for scrolling past sticky input */
-    .bottom-spacer {
-        height: 120px;
+        background-color: #0F172A !important;
+        border-color: #334155 !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -136,7 +135,7 @@ with st.sidebar:
     
     with st.expander("📄 View Available Policies", expanded=False):
         for p in policies:
-            st.markdown(f"• **{p['name']}**  \n`{p['filename']}`")
+            st.markdown(f"• **{p['name']}**  \n`<small>{p['filename']}</small>`", unsafe_allow_html=True)
     
     st.divider()
     st.markdown("### 💡 Quick Queries")
@@ -162,9 +161,9 @@ st.markdown("""
 <div class="hero-banner">
     <div class="hero-title">💼 NISHA 2.0</div>
     <div class="hero-subtitle">Newcomers' Integration, Support, and Help Assistant — Instant, grounded guidance with inline citations.</div>
-    <div style="margin-top: 12px;">
+    <div style="margin-top: 14px;">
         <span class="chip">RAG Verified</span>
-        <span class="chip">OpenAi GPT-OSS 20b</span>
+        <span class="chip">OpenAI GPT-OSS 20b</span>
         <span class="chip">Zero-Cost Stack</span>
     </div>
 </div>
@@ -196,8 +195,9 @@ with tab_chat:
 
 # TAB 2: Knowledge Base Inspector
 with tab_docs:
-    st.subheader("📑 Indexed Corporate Policies")
+    st.markdown("### 📑 Indexed Corporate Policies")
     st.caption("All responses are strictly derived from the official markdown policy files below:")
+    st.write("")
     
     col1, col2 = st.columns(2)
     for idx, p in enumerate(policies):
@@ -206,20 +206,20 @@ with tab_docs:
             st.markdown(f"""
             <div class="glass-card">
                 <h4 style="margin: 0 0 4px 0; color: #60A5FA;">📄 {p['name']}</h4>
-                <div style="color: #94A3B8; font-size: 12px; margin-bottom: 10px;">File: <code>{p['filename']}</code></div>
+                <div style="color: #94A3B8; font-size: 13px; margin-bottom: 12px;">File: <code>{p['filename']}</code></div>
             </div>
             """, unsafe_allow_html=True)
             
             if os.path.exists(p["path"]):
                 try:
                     with open(p["path"], "r", encoding="utf-8") as f:
-                        preview = f.read()[:300].strip() + "..."
+                        preview = f.read()[:250].strip() + "..."
                         st.markdown(f"```markdown\n{preview}\n```")
                 except Exception:
                     st.caption("Preview unavailable.")
             st.write("")
 
-# Chat Input placed at Root Level (Strictly grounded at the bottom of the screen)
+# Chat Input placed at Root Level (Streamlit naturally perfectly anchors this to the bottom)
 prompt = st.chat_input("Ask a question about any company policy...")
 
 if "preset_prompt" in st.session_state and st.session_state.preset_prompt:
@@ -271,6 +271,3 @@ if prompt:
 
         except Exception as e:
             st.error(f"Error querying NISHA engine: {e}")
-
-# Spacer so chat bubbles don't get covered by fixed input
-st.markdown('<div class="bottom-spacer"></div>', unsafe_allow_html=True)
