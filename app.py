@@ -1,6 +1,7 @@
 import os
 import time
 import glob
+import base64
 import streamlit as st
 from src.rag_engine import get_rag_chain, clean_chunk
 from src.ingestion import load_and_index_documents
@@ -12,41 +13,17 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Clean, Surgical CSS (No destructive global overrides)
+# Clean, Surgical CSS 
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
-    
-    /* Apply custom font without breaking Streamlit's layout */
-    html, body, [class*="st-"] {
-        font-family: 'Plus Jakarta Sans', sans-serif !important;
-    }
-
-    /* Style the Sidebar Buttons properly so text is always visible */
-    div.stButton > button {
-        background-color: #1E293B !important; 
-        color: #F8FAFC !important;
-        border: 1px solid #334155 !important;
-        border-radius: 8px !important;
-        padding: 10px 14px !important;
-        white-space: normal !important; /* Allows long text to wrap nicely */
-        height: auto !important;
-        transition: all 0.2s ease-in-out;
-    }
-    div.stButton > button:hover {
-        border-color: #3B82F6 !important;
-        color: #60A5FA !important;
-        background-color: #0F172A !important;
-    }
-
     /* Modern Hero Banner */
     .hero-banner {
-        background: linear-gradient(135deg, rgba(30, 58, 138, 0.5) 0%, rgba(15, 23, 42, 0.9) 100%);
-        border: 1px solid rgba(59, 130, 246, 0.2);
+        background: linear-gradient(135deg, rgba(30, 58, 138, 0.8) 0%, rgba(15, 23, 42, 0.95) 100%);
+        border: 1px solid rgba(59, 130, 246, 0.3);
         padding: 28px 32px;
         border-radius: 16px;
         margin-bottom: 24px;
-        box-shadow: 0 4px 24px -4px rgba(0, 0, 0, 0.4);
+        box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.2);
     }
     .hero-title {
         font-size: 28px;
@@ -58,23 +35,10 @@ st.markdown("""
         margin: 0;
     }
     .hero-subtitle {
-        color: #CBD5E1;
+        color: #E2E8F0;
         font-size: 15px;
         margin-top: 8px;
-    }
-
-    /* Glass Cards for Policy Viewer */
-    .glass-card {
-        background: rgba(30, 41, 59, 0.5);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 12px;
-        padding: 16px;
-        margin-bottom: 16px;
-        transition: all 0.2s ease-in-out;
-    }
-    .glass-card:hover {
-        border-color: rgba(96, 165, 250, 0.5);
-        background: rgba(30, 41, 59, 0.8);
+        margin-bottom: 14px;
     }
 
     /* Badge Pills */
@@ -84,17 +48,28 @@ st.markdown("""
         font-size: 11px;
         font-weight: 600;
         border-radius: 20px;
-        background: rgba(59, 130, 246, 0.1);
+        background: rgba(59, 130, 246, 0.15);
         color: #93C5FD;
-        border: 1px solid rgba(59, 130, 246, 0.3);
+        border: 1px solid rgba(59, 130, 246, 0.4);
         margin-right: 8px;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# Helper function to list indexed documents
+# Helper function to embed PDFs directly in Streamlit
+def display_pdf(file_path):
+    try:
+        with open(file_path, "rb") as f:
+            base64_pdf = base64.b64encode(f.read()).decode('utf-8')
+        # Embed the PDF in an iframe
+        pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="600" type="application/pdf" style="border: 1px solid #ccc; border-radius: 8px;"></iframe>'
+        st.markdown(pdf_display, unsafe_allow_html=True)
+    except Exception as e:
+        st.error(f"Could not load PDF: {e}")
+
+# Helper function to list indexed documents (Supports both PDF and MD)
 def get_available_policies(data_dir: str = "./data/sample_policies"):
-    files = glob.glob(f"{data_dir}/*.md") + glob.glob(f"{data_dir}/*.pdf")
+    files = glob.glob(f"{data_dir}/*.pdf") + glob.glob(f"{data_dir}/*.md")
     policy_list = []
     for f in sorted(files):
         filename = os.path.basename(f)
@@ -104,7 +79,7 @@ def get_available_policies(data_dir: str = "./data/sample_policies"):
 
 # Auto-index policy documents on first boot if DB doesn't exist
 if not os.path.exists("./chroma_db"):
-    with st.spinner("⚡ Initializing knowledge base and indexing policies..."):
+    with st.spinner("⚡ Initializing knowledge base and indexing PDFs..."):
         load_and_index_documents()
 
 policies = get_available_policies()
@@ -114,7 +89,7 @@ with st.sidebar:
     st.markdown("### 📚 Knowledge Base")
     st.caption(f"Currently indexed: **{len(policies)} verified policies**")
     
-    with st.expander("📄 View Available Policies", expanded=False):
+    with st.expander("📄 View Active Directory", expanded=False):
         for p in policies:
             st.markdown(f"• **{p['name']}**  \n`<small>{p['filename']}</small>`", unsafe_allow_html=True)
     
@@ -142,16 +117,15 @@ st.markdown("""
 <div class="hero-banner">
     <div class="hero-title">💼 NISHA 2.0</div>
     <div class="hero-subtitle">Newcomers' Integration, Support, and Help Assistant — Instant, grounded guidance with inline citations.</div>
-    <div style="margin-top: 14px;">
-        <span class="chip">RAG Verified</span>
+    <div>
+        <span class="chip">PDF RAG Verified</span>
         <span class="chip">OpenAI GPT-OSS 20b</span>
-        <span class="chip">Zero-Cost Stack</span>
     </div>
 </div>
 """, unsafe_allow_html=True)
 
 # Layout Tabs
-tab_chat, tab_docs = st.tabs(["💬 Assistant Chat", "📑 Active Policy Documents"])
+tab_chat, tab_docs = st.tabs(["💬 Assistant Chat", "📑 Active Policy Viewer (PDFs)"])
 
 # TAB 1: Chat Interface
 with tab_chat:
@@ -174,33 +148,21 @@ with tab_chat:
                         st.markdown(f"**Document:** `{s['source']}`")
                         st.caption(s["snippet"])
 
-# TAB 2: Knowledge Base Inspector
+# TAB 2: PDF Document Viewer
 with tab_docs:
-    st.markdown("### 📑 Indexed Corporate Policies")
-    st.caption("All responses are strictly derived from the official markdown policy files below:")
+    st.markdown("### 📑 Corporate Policy Library")
+    st.caption("Expand a policy below to read the original source PDF document directly in your browser.")
     st.write("")
     
-    col1, col2 = st.columns(2)
-    for idx, p in enumerate(policies):
-        target_col = col1 if idx % 2 == 0 else col2
-        with target_col:
-            st.markdown(f"""
-            <div class="glass-card">
-                <h4 style="margin: 0 0 4px 0; color: #60A5FA;">📄 {p['name']}</h4>
-                <div style="color: #94A3B8; font-size: 13px; margin-bottom: 12px;">File: <code>{p['filename']}</code></div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            if os.path.exists(p["path"]):
-                try:
-                    with open(p["path"], "r", encoding="utf-8") as f:
-                        preview = f.read()[:250].strip() + "..."
-                        st.markdown(f"```text\n{preview}\n```")
-                except Exception:
-                    st.caption("Preview unavailable.")
-            st.write("")
+    for p in policies:
+        with st.expander(f"📄 {p['name']} ({p['filename']})"):
+            if p["path"].endswith(".pdf"):
+                display_pdf(p["path"])
+            elif p["path"].endswith(".md"):
+                with open(p["path"], "r", encoding="utf-8") as f:
+                    st.markdown(f.read())
 
-# Chat Input placed at Root Level
+# Chat Input
 prompt = st.chat_input("Ask a question about any company policy...")
 
 if "preset_prompt" in st.session_state and st.session_state.preset_prompt:
@@ -208,7 +170,6 @@ if "preset_prompt" in st.session_state and st.session_state.preset_prompt:
     st.session_state.preset_prompt = None
 
 if prompt:
-    # Add user message
     st.session_state.messages.append({"role": "user", "content": prompt, "sources": []})
     
     with tab_chat:
@@ -218,7 +179,6 @@ if prompt:
         try:
             rag_chain, retriever = get_rag_chain()
             
-            # Retrieve source chunks
             source_docs = retriever.invoke(prompt)
             formatted_sources = [
                 {
