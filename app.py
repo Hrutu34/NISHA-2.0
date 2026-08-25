@@ -80,7 +80,9 @@ with st.sidebar:
     
     with st.expander("📄 View Active Directory", expanded=False):
         for p in policies:
-            st.markdown(f"• **{p['name']}**  \n`<small>{p['filename']}</small>`", unsafe_allow_html=True)
+            st.markdown(f"• **{p['name']}**")
+            st.caption(f"`{p['filename']}`")
+            st.write("")
     
     st.divider()
     st.markdown("### 💡 Quick Queries")
