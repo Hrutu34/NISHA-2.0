@@ -3,6 +3,7 @@ import time
 import glob
 import streamlit as st
 from streamlit_pdf_viewer import pdf_viewer
+import streamlit.components.v1 as components
 from src.rag_engine import get_rag_chain, clean_chunk
 from src.ingestion import load_and_index_documents
 
@@ -55,6 +56,118 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
+
+def voice_input_widget():
+    """Renders a browser-native live speech recognition button with real-time feedback."""
+    voice_html = """
+    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+        <button id="micBtn" onclick="toggleDictation()" style="
+            background: #1E293B;
+            border: 1px solid #3B82F6;
+            color: #60A5FA;
+            padding: 7px 14px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;">
+            <span id="micIcon">🎙️</span> <span id="micText">Voice Dictation</span>
+        </button>
+        <span id="interimText" style="font-size: 13px; color: #94A3B8; font-style: italic;"></span>
+    </div>
+
+    <script>
+    let recognition;
+    let isListening = false;
+
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = 'en-US';
+
+        recognition.onresult = function(event) {
+            let interimTranscript = '';
+            let finalTranscript = '';
+
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) {
+                    finalTranscript += event.results[i][0].transcript + ' ';
+                } else {
+                    interimTranscript += event.results[i][0].transcript;
+                }
+            }
+
+            // Display interim live words immediately
+            document.getElementById('interimText').innerText = interimTranscript || (finalTranscript ? "Transcribed." : "");
+
+            // Locate Streamlit's native chat textarea in the parent frame
+            try {
+                const parentDoc = window.parent.document;
+                const chatTextarea = parentDoc.querySelector('[data-testid="stChatInput"] textarea');
+                if (chatTextarea) {
+                    const currentVal = chatTextarea.value;
+                    const combined = (finalTranscript + interimTranscript).trim();
+                    if (combined) {
+                        chatTextarea.value = combined;
+                        chatTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+                }
+            } catch(e) {
+                console.error("DOM traversal error:", e);
+            }
+        };
+
+        recognition.onerror = function(event) {
+            console.error("Speech Recognition Error: ", event.error);
+            stopDictation();
+        };
+
+        recognition.onend = function() {
+            if (isListening) {
+                stopDictation();
+            }
+        };
+    } else {
+        document.getElementById('micBtn').disabled = true;
+        document.getElementById('micText').innerText = "Voice not supported in this browser";
+    }
+
+    function toggleDictation() {
+        if (!isListening) {
+            startDictation();
+        } else {
+            stopDictation();
+        }
+    }
+
+    function startDictation() {
+        if (!recognition) return;
+        recognition.start();
+        isListening = true;
+        document.getElementById('micBtn').style.borderColor = '#EF4444';
+        document.getElementById('micBtn').style.color = '#F87171';
+        document.getElementById('micText').innerText = "Listening (Click to Stop)...";
+        document.getElementById('micIcon').innerText = "🔴";
+    }
+
+    function stopDictation() {
+        if (!recognition) return;
+        recognition.stop();
+        isListening = false;
+        document.getElementById('micBtn').style.borderColor = '#3B82F6';
+        document.getElementById('micBtn').style.color = '#60A5FA';
+        document.getElementById('micText').innerText = "Voice Dictation";
+        document.getElementById('micIcon').innerText = "🎙️";
+    }
+    </script>
+    """
+    components.html(voice_html, height=45)
 
 # Helper function to list indexed documents (Supports both PDF and MD)
 def get_available_policies(data_dir: str = "./data/sample_policies"):
@@ -169,6 +282,8 @@ with tab_docs:
                 with open(p["path"], "r", encoding="utf-8") as f:
                     st.markdown(f.read())
 
+# Voice Dictation Trigger
+voice_input_widget()
 # Chat Input
 prompt = st.chat_input("Ask a question about any company policy...")
 
