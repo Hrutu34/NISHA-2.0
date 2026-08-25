@@ -58,116 +58,158 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 def voice_input_widget():
-    """Renders a browser-native live speech recognition button with real-time feedback."""
+    """Injects a microphone icon button directly next to Streamlit's send button."""
     voice_html = """
-    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
-        <button id="micBtn" onclick="toggleDictation()" style="
-            background: #1E293B;
-            border: 1px solid #3B82F6;
-            color: #60A5FA;
-            padding: 7px 14px;
-            border-radius: 20px;
-            cursor: pointer;
-            font-family: inherit;
-            font-size: 13px;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            transition: all 0.2s ease;">
-            <span id="micIcon">🎙️</span> <span id="micText">Voice Dictation</span>
-        </button>
-        <span id="interimText" style="font-size: 13px; color: #94A3B8; font-style: italic;"></span>
-    </div>
-
     <script>
-    let recognition;
-    let isListening = false;
+    (function initFloatingVoiceWidget() {
+        const parentDoc = window.parent.document;
 
-    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        recognition = new SpeechRecognition();
-        recognition.continuous = true;
-        recognition.interimResults = true;
-        recognition.lang = 'en-US';
+        // Clean up previous instances to prevent duplicates on Streamlit reruns
+        const existingBtn = parentDoc.getElementById('nisha-embedded-mic-btn');
+        if (existingBtn) {
+            existingBtn.remove();
+        }
 
-        recognition.onresult = function(event) {
-            let interimTranscript = '';
-            let finalTranscript = '';
+        let recognition;
+        let isListening = false;
 
-            for (let i = event.resultIndex; i < event.results.length; ++i) {
-                if (event.results[i].isFinal) {
-                    finalTranscript += event.results[i][0].transcript + ' ';
-                } else {
-                    interimTranscript += event.results[i][0].transcript;
-                }
+        function setNativeValue(element, value) {
+            const valueSetter = Object.getOwnPropertyDescriptor(element, 'value').set;
+            const prototype = Object.getPrototypeOf(element);
+            const prototypeValueSetter = Object.getOwnPropertyDescriptor(prototype, 'value').set;
+            
+            if (valueSetter && valueSetter !== prototypeValueSetter) {
+                prototypeValueSetter.call(element, value);
+            } else {
+                valueSetter.call(element, value);
             }
+            element.dispatchEvent(new Event('input', { bubbles: true }));
+            element.dispatchEvent(new Event('change', { bubbles: true }));
+        }
 
-            // Display interim live words immediately
-            document.getElementById('interimText').innerText = interimTranscript || (finalTranscript ? "Transcribed." : "");
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = 'en-US';
 
-            // Locate Streamlit's native chat textarea in the parent frame
-            try {
-                const parentDoc = window.parent.document;
-                const chatTextarea = parentDoc.querySelector('[data-testid="stChatInput"] textarea');
-                if (chatTextarea) {
-                    const currentVal = chatTextarea.value;
-                    const combined = (finalTranscript + interimTranscript).trim();
-                    if (combined) {
-                        chatTextarea.value = combined;
-                        chatTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+            recognition.onresult = function(event) {
+                let interimTranscript = '';
+                let finalTranscript = '';
+
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        finalTranscript += event.results[i][0].transcript + ' ';
+                    } else {
+                        interimTranscript += event.results[i][0].transcript;
                     }
                 }
-            } catch(e) {
-                console.error("DOM traversal error:", e);
-            }
-        };
 
-        recognition.onerror = function(event) {
-            console.error("Speech Recognition Error: ", event.error);
-            stopDictation();
-        };
+                const chatTextarea = parentDoc.querySelector('[data-testid="stChatInput"] textarea');
+                if (chatTextarea) {
+                    const combined = (finalTranscript + interimTranscript).trim();
+                    if (combined) {
+                        setNativeValue(chatTextarea, combined);
+                    }
+                }
+            };
 
-        recognition.onend = function() {
-            if (isListening) {
+            recognition.onerror = function(event) {
+                console.error("Speech error: ", event.error);
                 stopDictation();
-            }
-        };
-    } else {
-        document.getElementById('micBtn').disabled = true;
-        document.getElementById('micText').innerText = "Voice not supported in this browser";
-    }
+            };
 
-    function toggleDictation() {
-        if (!isListening) {
-            startDictation();
-        } else {
-            stopDictation();
+            recognition.onend = function() {
+                if (isListening) stopDictation();
+            };
         }
-    }
 
-    function startDictation() {
-        if (!recognition) return;
-        recognition.start();
-        isListening = true;
-        document.getElementById('micBtn').style.borderColor = '#EF4444';
-        document.getElementById('micBtn').style.color = '#F87171';
-        document.getElementById('micText').innerText = "Listening (Click to Stop)...";
-        document.getElementById('micIcon').innerText = "🔴";
-    }
+        function toggleDictation(btn) {
+            if (!isListening) {
+                startDictation(btn);
+            } else {
+                stopDictation(btn);
+            }
+        }
 
-    function stopDictation() {
-        if (!recognition) return;
-        recognition.stop();
-        isListening = false;
-        document.getElementById('micBtn').style.borderColor = '#3B82F6';
-        document.getElementById('micBtn').style.color = '#60A5FA';
-        document.getElementById('micText').innerText = "Voice Dictation";
-        document.getElementById('micIcon').innerText = "🎙️";
-    }
+        function startDictation(btn) {
+            if (!recognition) return;
+            try {
+                recognition.start();
+                isListening = true;
+                btn.style.backgroundColor = 'rgba(239, 68, 68, 0.2)';
+                btn.style.borderColor = '#EF4444';
+                btn.innerText = '🔴';
+            } catch(e) {
+                console.warn(e);
+            }
+        }
+
+        function stopDictation(btn) {
+            if (!recognition) return;
+            try {
+                recognition.stop();
+            } catch(e) {}
+            isListening = false;
+            if (btn) {
+                btn.style.backgroundColor = 'transparent';
+                btn.style.borderColor = 'transparent';
+                btn.innerText = '🎙️';
+            }
+        }
+
+        // Mount the mic button into Streamlit's chat input action container
+        function attachMicButton() {
+            const chatContainer = parentDoc.querySelector('[data-testid="stChatInput"]');
+            if (!chatContainer) {
+                setTimeout(attachMicButton, 300);
+                return;
+            }
+
+            const sendButton = chatContainer.querySelector('button');
+            if (!sendButton || !sendButton.parentElement) {
+                setTimeout(attachMicButton, 300);
+                return;
+            }
+
+            // Create mic button
+            const micBtn = parentDoc.createElement('button');
+            micBtn.id = 'nisha-embedded-mic-btn';
+            micBtn.type = 'button';
+            micBtn.innerText = '🎙️';
+            micBtn.title = 'Click to dictate (Live STT)';
+            
+            // Inline icon styling matching chat input height
+            Object.assign(micBtn.style, {
+                background: 'transparent',
+                border: '1px solid transparent',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '18px',
+                padding: '4px 8px',
+                marginRight: '4px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.2s ease'
+            });
+
+            micBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleDictation(micBtn);
+            });
+
+            // Insert directly to the left of the send button
+            sendButton.parentElement.insertBefore(micBtn, sendButton);
+        }
+
+        attachMicButton();
+    })();
     </script>
     """
-    components.html(voice_html, height=45)
+    components.html(voice_html, height=0, width=0)
 
 # Helper function to list indexed documents (Supports both PDF and MD)
 def get_available_policies(data_dir: str = "./data/sample_policies"):
