@@ -16,7 +16,7 @@
 - **⚡ Real-Time Response Streaming:** Responses stream smoothly character-by-character using `st.write_stream` for an interactive, natural conversational feel.
 - **📄 Native In-App PDF Document Viewer:** Employees can read original, official corporate PDF policy documents directly in the browser with instant download support.
 - **📌 Transparent Source Citations:** Every answer cites the exact policy document and excerpt retrieved from the knowledge base, eliminating hallucinations.
-- **🏢 Enterprise Knowledge Base:** Grounded in 10 comprehensive, interconnected corporate policies spanning HR, legal, travel, compensation, IT security, and executive governance.
+- **🏢 Enterprise Knowledge Base:** Grounded in 11 comprehensive, interconnected corporate policies spanning HR, legal, travel, compensation, IT security, and executive governance.
 - **🚀 Zero-Cost Production Stack:** Optimized for cost efficiency using HuggingFace embeddings (`all-MiniLM-L6-v2`), local Chroma vector storage, and Groq's high-speed inference engine running OpenAI's open-weight **GPT-OSS 20B** model.
 - **🌐 Dual Interface:** Interactive Streamlit UI for employees and a standalone FastAPI backend (`src/api.py`) for enterprise portal integration.
 
@@ -63,11 +63,11 @@ Navigating internal corporate documentation during onboarding is often overwhelm
 
 ### 1. Ingestion Pipeline
 * **Document Extraction:** Parses PDF (`.pdf`) policy documents.
-* **Semantic Chunking:** Splits text into 800-character chunks with a 150-character overlap using hierarchical header boundaries (`##`, `###`).
+* **Semantic Chunking:** Splits text into 600-character chunks with an 80-character overlap using recursive text separators.
 * **Vector Indexing:** Generates sentence embeddings via `all-MiniLM-L6-v2` / `nomic-embed-text` and persists to ChromaDB.
 
 ### 2. Retrieval & Generation Engine
-* **Hybrid Context Matching:** Performs similarity search across policy embeddings to retrieve the top $K=3$ most relevant chunks.
+* **Hybrid Context Matching:** Performs similarity search across policy embeddings to retrieve the top $K=4$ most relevant chunks.
 * **Context-Bound Prompting:** Injects retrieved chunks into a system prompt that explicitly instructs the model to refuse unsupported questions and refer employees to HR.
 * **Zero-Cost Inference:** Powered by Groq's high-speed free tier (`gpt-oss-20b`) for cloud deployment.
 
@@ -138,7 +138,8 @@ nisha-2.0/
 3. Install Dependencies
    ```bash
    pip install -r requirements.txt
-   
+   ```
+
 4. Configure Environment Variables
    Create a .env file in the root directory (or configure secrets in Streamlit Cloud):
    ```bash
